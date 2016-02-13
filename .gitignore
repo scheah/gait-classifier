@@ -32,7 +32,7 @@ proguard/
 captures/
 
 # extras 
-/.idea/workspace.xml
-/.idea/libraries
+/.idea
+*.iml
 .DS_Store
 
