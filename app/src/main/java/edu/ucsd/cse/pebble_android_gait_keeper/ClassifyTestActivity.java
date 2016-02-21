@@ -14,6 +14,7 @@ import java.io.InputStreamReader;
 
 import weka.classifiers.trees.RandomForest;
 import weka.core.Attribute;
+import weka.core.DenseInstance;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.FastVector;
@@ -112,7 +113,7 @@ public class ClassifyTestActivity extends Activity {
                     continue; // skip line
                 String[] data = mLine.split("\\s+");
                 // build and add instance
-                Instance iDataPoint = new Instance(4);
+                Instance iDataPoint = new DenseInstance(4);
                 iDataPoint.setValue((Attribute)fvWekaAttributes.elementAt(0), Double.parseDouble(data[0]));
                 iDataPoint.setValue((Attribute)fvWekaAttributes.elementAt(1), Double.parseDouble(data[1]));
                 iDataPoint.setValue((Attribute)fvWekaAttributes.elementAt(2), Double.parseDouble(data[2]));
