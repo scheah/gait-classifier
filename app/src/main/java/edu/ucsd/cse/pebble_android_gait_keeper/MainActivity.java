@@ -1,9 +1,11 @@
 package edu.ucsd.cse.pebble_android_gait_keeper;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 
 
 public class MainActivity extends Activity {
@@ -34,5 +36,10 @@ public class MainActivity extends Activity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    public void testClassification(View view) {
+        Intent intent = new Intent(this, ClassifyTestActivity.class);
+        startActivity(intent);
     }
 }
