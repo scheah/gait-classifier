@@ -2,6 +2,7 @@ package edu.ucsd.cse.pebble_android_gait_keeper;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -52,6 +53,12 @@ public class ClassifyTestActivity extends Activity {
         testResults.setText("Accuracy: TBD");
         testResults.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         layout.addView(testResults);
+
+        TextView dataDump = new TextView(this);
+        dataDump.setText(m_Data.toString());
+        dataDump.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        dataDump.setMovementMethod(new ScrollingMovementMethod());
+        layout.addView(dataDump);
     }
 
     @Override
@@ -77,31 +84,11 @@ public class ClassifyTestActivity extends Activity {
     }
 
     public void readData() {
-        int numAttributes = 4; // Attribute format: (x, y, z, UserID)
+
         double percentageSplit = 20; // Define % for data split for training/test set (80/20)
 
-        // Declare three numeric attributes
-        Attribute attribute1 = new Attribute("x");
-        Attribute attribute2 = new Attribute("y");
-        Attribute attribute3 = new Attribute("z");
-        // Declare the class attribute along with its values
-        FastVector fvClassVal = new FastVector(2);
-        String[] classes = new String[]{"user1", "user2"}; // TBD: add more depending on gathered data
-        for (int i = 0; i < classes.length; i++) {
-            fvClassVal.addElement(classes[i]);
-        }
-        Attribute classAttribute = new Attribute("theClass", fvClassVal);
-        // Declare the feature vector
-        FastVector fvWekaAttributes = new FastVector(numAttributes);
-        fvWekaAttributes.addElement(attribute1);
-        fvWekaAttributes.addElement(attribute2);
-        fvWekaAttributes.addElement(attribute3);
-        fvWekaAttributes.addElement(classAttribute);
-        // Create an empty training set
-        m_Data = new Instances("gait" /*relation name*/, fvWekaAttributes /*attribute vector*/, 25*250 /*initial capacity*/);
-        // Set class index
-        m_Data.setClassIndex(numAttributes-1); // The last index of the attribute vector should contain the class attribute
-        // Create instances
+        Instances rawData = initializeRawDataFormat();
+        Instances transformedData = initializeTransformedDataFormat();
         BufferedReader reader = null;
         try {
             reader = new BufferedReader(new InputStreamReader(getAssets().open("data_scott_1.log")));
@@ -109,16 +96,24 @@ public class ClassifyTestActivity extends Activity {
             String mLine;
             while ((mLine = reader.readLine()) != null) {
                 //process line
-                if (mLine.contains(":") || mLine.contentEquals(""))
+                Instance iDataPoint = null;
+                if (mLine.contains(":"))
                     continue; // skip line
-                String[] data = mLine.split("\\s+");
-                // build and add instance
-                Instance iDataPoint = new DenseInstance(4);
-                iDataPoint.setValue((Attribute)fvWekaAttributes.elementAt(0), Double.parseDouble(data[0]));
-                iDataPoint.setValue((Attribute)fvWekaAttributes.elementAt(1), Double.parseDouble(data[1]));
-                iDataPoint.setValue((Attribute)fvWekaAttributes.elementAt(2), Double.parseDouble(data[2]));
-                iDataPoint.setValue((Attribute)fvWekaAttributes.elementAt(3), "user1");
-                m_Data.add(iDataPoint);
+                else if (mLine.contentEquals("")){
+                    // End of sample window. Extract transformed features now
+                    iDataPoint = transformData(rawData, transformedData);
+                    transformedData.add(iDataPoint);
+                    rawData.clear(); // reset to read in new window
+                }
+                else {
+                    String[] data = mLine.split("\\s+");
+                    // build and add instance
+                    iDataPoint = new DenseInstance(4);
+                    iDataPoint.setValue(rawData.attribute("x"), Double.parseDouble(data[0]));
+                    iDataPoint.setValue(rawData.attribute("y"), Double.parseDouble(data[1]));
+                    iDataPoint.setValue(rawData.attribute("z"), Double.parseDouble(data[2]));
+                    rawData.add(iDataPoint);
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -133,25 +128,213 @@ public class ClassifyTestActivity extends Activity {
                 }
             }
         }
+        m_Data = transformedData;
+        m_TrainingData = getTrainingSet(m_Data, percentageSplit);
+        m_TestData = getTestSet(m_Data, percentageSplit);
+    }
+
+    public Instance transformData(Instances rawData, Instances transformedData) {
+        String [] axis = new String[] {"x", "y", "z"};
+        double [] mean = new double[axis.length];
+        Instance windowDataPoint = new DenseInstance(44); // 43 features + 1 for class
+        // Average and Standard Deviation
+        for (int i = 0; i < axis.length; i++) {
+            mean[i] = rawData.meanOrMode(i);
+            double sd = Math.sqrt(rawData.variance(i));
+            windowDataPoint.setValue(transformedData.attribute("Average " + axis[i]), mean[i]);
+            windowDataPoint.setValue(transformedData.attribute("Standard Deviation " + axis[i]), sd);
+        }
+        // Average Absolute Difference
+        double [] avgAbsDiff = new double[axis.length];
+        for (int instIdx = 0; instIdx < rawData.numInstances(); instIdx++) {
+            Instance currInst = rawData.instance(instIdx);
+            for (int i = 0; i < axis.length; i++) {
+                avgAbsDiff[i] += Math.abs( currInst.value(rawData.attribute(axis[i])) - mean[i] );
+            }
+        }
+        for (int i = 0; i < axis.length; i++) {
+            avgAbsDiff[i] /= rawData.numInstances();
+            windowDataPoint.setValue(transformedData.attribute("Average Absolute Difference " + axis[i]), avgAbsDiff[i]);
+        }
+        // Time Between Peaks
+        for (int i = 0; i < axis.length; i++) {
+            windowDataPoint.setValue(transformedData.attribute("Time between peaks " + axis[i]), 0); // TBD
+        }
+        // Binned Distribution
+        double [] binsX = new double[10];
+        double [] binsY = new double[10];
+        double [] binsZ = new double[10];
+        double [] rangesX = new double[10];
+        double [] rangesY = new double[10];
+        double [] rangesZ = new double[10];
+        double minimumX = rawData.attributeStats(0).numericStats.min;
+        double maximumX = rawData.attributeStats(0).numericStats.max;
+        double minimumY = rawData.attributeStats(1).numericStats.min;
+        double maximumY = rawData.attributeStats(1).numericStats.max;
+        double minimumZ = rawData.attributeStats(2).numericStats.min;
+        double maximumZ = rawData.attributeStats(2).numericStats.max;
+        double stepX = (maximumX - minimumX) / 10;
+        double stepY = (maximumY - minimumY) / 10;
+        double stepZ = (maximumZ - minimumZ) / 10;
+        for (int i = 0; i < 10; i++) {
+            rangesX[i] = minimumX + stepX * (i+1);
+            rangesY[i] = minimumY + stepY * (i+1);
+            rangesZ[i] = minimumZ + stepZ * (i+1);
+        }
+        for (int instIdx = 0; instIdx < rawData.numInstances(); instIdx++) {
+            Instance currInst = rawData.instance(instIdx);
+            for (int i = 0; i < 10; i++) {
+                if (currInst.value(0) <= rangesX[i]) {
+                    binsX[i] += 1;
+                    break;
+                }
+            }
+            for (int i = 0; i < 10; i++) {
+                if (currInst.value(1) <= rangesY[i]) {
+                    binsY[i] += 1;
+                    break;
+                }
+            }
+            for (int i = 0; i < 10; i++) {
+                if (currInst.value(2) <= rangesX[i]) {
+                    binsZ[i] += 1;
+                    break;
+                }
+            }
+        }
+        for (int i = 0; i < 10; i++) {
+            binsX[i] /= rawData.numInstances();
+            binsY[i] /= rawData.numInstances();
+            binsZ[i] /= rawData.numInstances();
+        }
+        for (int i = 0; i < 10 * axis.length; i++) {
+            int dim = i/10;
+            int binNum = i % 10;
+            double [] dimBins = null;
+            switch(dim) {
+                case 0:
+                    dimBins = binsX;
+                    break;
+                case 1:
+                    dimBins = binsY;
+                    break;
+                case 2:
+                    dimBins = binsZ;
+                    break;
+                default:
+                    Log.d(TAG, "[transformData(Instances rawData)] Possible Error");
+            }
+            windowDataPoint.setValue(transformedData.attribute("Binned Distribution " + axis[dim] + " " + Integer.toString(binNum)), dimBins[binNum]);
+        }
+        // Average Resultant Acceleration
+        double avgResultAccel = 0;
+        for (int instIdx = 0; instIdx < rawData.numInstances(); instIdx++) {
+            Instance currInst = rawData.instance(instIdx);
+            avgResultAccel += Math.sqrt(Math.pow(currInst.value(0), 2) + Math.pow(currInst.value(1), 2) + Math.pow(currInst.value(2), 2));
+        }
+        avgResultAccel /= rawData.numInstances();
+        windowDataPoint.setValue(transformedData.attribute("Average Resultant Acceleration"), avgResultAccel);
+        // Class attribute
+        windowDataPoint.setValue(transformedData.attribute("userid"), "user1");
+
+        return windowDataPoint;
+    }
+
+    public Instances initializeRawDataFormat() {
+        // Raw Data Points to extract features from
+        Attribute attribute1 = new Attribute("x");
+        Attribute attribute2 = new Attribute("y");
+        Attribute attribute3 = new Attribute("z");
+        // Declare the feature vector
+        FastVector fvWekaAttributes = new FastVector(3);
+        fvWekaAttributes.addElement(attribute1);
+        fvWekaAttributes.addElement(attribute2);
+        fvWekaAttributes.addElement(attribute3);
+        // Create an empty raw data set
+        Instances rawData = new Instances("raw_gait" /*relation name*/, fvWekaAttributes /*attribute vector*/, 250 /*initial capacity*/);
+        return rawData;
+    }
+
+    public Instances initializeTransformedDataFormat() {
+        int numAttributes = 44;
+        String [] axis = new String[] {"x", "y", "z"};
+        String[] classes = new String[]{"user1", "user2"}; // TBD: add more depending on gathered data
+
+        // Transformed Data
+        FastVector fvTransformedWekaAttributes = new FastVector(numAttributes);
+        // Numeric attributes
+        // Average
+        for (int i = 0; i < axis.length; i++) {
+            Attribute attribute = new Attribute("Average " + axis[i]);
+            fvTransformedWekaAttributes.addElement(attribute);
+        }
+        // Standard Deviation
+        for (int i = 0; i < axis.length; i++) {
+            Attribute attribute = new Attribute("Standard Deviation " + axis[i]);
+            fvTransformedWekaAttributes.addElement(attribute);
+        }
+        // Average Absolute Difference
+        for (int i = 0; i < axis.length; i++) {
+            Attribute attribute = new Attribute("Average Absolute Difference " + axis[i]);
+            fvTransformedWekaAttributes.addElement(attribute);
+        }
+        // Time between peaks
+        for (int i = 0; i < axis.length; i++) {
+            Attribute attribute = new Attribute("Time between peaks " + axis[i]);
+            fvTransformedWekaAttributes.addElement(attribute);
+        }
+        // Binned Distribution
+        for (int i = 0; i < 10 * axis.length; i++) {
+            Attribute attribute = new Attribute("Binned Distribution " + axis[i/10] + " " + Integer.toString(i % 10));
+            fvTransformedWekaAttributes.addElement(attribute);
+        }
+        // Average Resultant Acceleration
+        Attribute attribute = new Attribute("Average Resultant Acceleration");
+        fvTransformedWekaAttributes.addElement(attribute);
+        // Declare class attribute
+        FastVector fvUserVal = new FastVector(2);
+        for (int i = 0; i < classes.length; i++) {
+            fvUserVal.addElement(classes[i]);
+        }
+        Attribute classAttribute = new Attribute("userid", fvUserVal);
+        fvTransformedWekaAttributes.addElement(classAttribute);
+        Instances ret = new Instances("gait" /*relation name*/, fvTransformedWekaAttributes /*attribute vector*/, 25 /*initial capacity*/);
+        ret.setClassIndex(ret.numAttributes() - 1);
+
+        return ret;
+    }
+
+    public Instances getTrainingSet(Instances data, double percentSplit) {
+        Instances trainingSet = null;
         try {
             // Removes 20%
             RemovePercentage dataSplitter = new RemovePercentage();
-            dataSplitter.setPercentage(percentageSplit);
-            dataSplitter.setInputFormat(m_Data);
-            m_TrainingData = Filter.useFilter(m_Data, dataSplitter);
-            // Do the opposite to get the remaining data
-            dataSplitter = new RemovePercentage();
-            dataSplitter.setInvertSelection(true);
-            dataSplitter.setPercentage(percentageSplit);
-            dataSplitter.setInputFormat(m_Data);
-            m_TestData = Filter.useFilter(m_Data, dataSplitter);
+            dataSplitter.setPercentage(percentSplit);
+            dataSplitter.setInputFormat(data);
+            trainingSet = Filter.useFilter(data, dataSplitter);
         } catch (Exception e) {
             e.printStackTrace();
             Log.d(TAG, e.getMessage());
         }
-
-
+        return trainingSet;
     }
+
+    public Instances getTestSet(Instances data, double percentSplit) {
+        Instances testSet = null;
+        try {
+            // Do the opposite to get the remaining data
+            RemovePercentage dataSplitter = new RemovePercentage();
+            dataSplitter.setInvertSelection(true);
+            dataSplitter.setPercentage(percentSplit);
+            dataSplitter.setInputFormat(data);
+            testSet = Filter.useFilter(data, dataSplitter);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.d(TAG, e.getMessage());
+        }
+        return testSet;
+    }
+
     public void trainClassifier() {
         // Call readTrainingData first!
         // Check whether training data has been built.
