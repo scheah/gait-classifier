@@ -13,6 +13,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
+import weka.classifiers.Evaluation;
 import weka.classifiers.trees.RandomForest;
 import weka.core.Attribute;
 import weka.core.DenseInstance;
@@ -40,7 +41,7 @@ public class ClassifyTestActivity extends Activity {
         setContentView(R.layout.activity_classify_test);
 
         this.readData();
-        this.trainClassifier();
+        this.trainClassifier(m_TrainingData);
 
         LinearLayout layout = (LinearLayout) findViewById(R.id.classifyTestActivityLinearLayout);
         TextView readDataResults = new TextView(this);
@@ -50,14 +51,13 @@ public class ClassifyTestActivity extends Activity {
         readDataResults.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         layout.addView(readDataResults);
         TextView testResults = new TextView(this);
-        testResults.setText("Accuracy: TBD");
+        testResults.setText("Summary of Classifier: \n" + this.testClassifier(m_Classifier, m_TrainingData, m_TestData));
         testResults.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         layout.addView(testResults);
 
         TextView dataDump = new TextView(this);
         dataDump.setText(m_Data.toString());
         dataDump.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-        dataDump.setMovementMethod(new ScrollingMovementMethod());
         layout.addView(dataDump);
     }
 
@@ -369,18 +369,29 @@ public class ClassifyTestActivity extends Activity {
         return testSet;
     }
 
-    public void trainClassifier() {
-        // Call readTrainingData first!
+    public void trainClassifier(Instances trainingData) {
         // Check whether training data has been built.
-        if (m_Data.numInstances() == 0) {
+        if (trainingData.numInstances() == 0) {
             Log.d(TAG, "No training data available");
             return;
         }
         try {
-            m_Classifier.buildClassifier(m_Data);
+            m_Classifier.buildClassifier(trainingData);
         } catch (Exception e) {
             e.printStackTrace();
             Log.d(TAG, e.getMessage());
         }
+    }
+
+    public String testClassifier(Classifier classifier, Instances trainData, Instances testData) {
+        try {
+            Evaluation eTest = new Evaluation(trainData);
+            eTest.evaluateModel(classifier, testData);
+            return eTest.toSummaryString();
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.d(TAG, e.getMessage());
+        }
+        return "";
     }
 }
