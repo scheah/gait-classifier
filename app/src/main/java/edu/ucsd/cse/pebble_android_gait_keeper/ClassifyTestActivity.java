@@ -157,8 +157,42 @@ public class ClassifyTestActivity extends Activity {
             windowDataPoint.setValue(transformedData.attribute("Average Absolute Difference " + axis[i]), avgAbsDiff[i]);
         }
         // Time Between Peaks
+        boolean [][] peaks = new boolean[rawData.numAttributes()][rawData.numInstances()];
+        int dt = 1; // time delay of detection
+        int m = 1; // peak threshold detection
+        for (int instIdx = 0; instIdx < rawData.numInstances(); instIdx++) {
+            int lowerBound = instIdx - dt;
+            int upperBound = instIdx + dt;
+            if (lowerBound < 0)
+                lowerBound = 0;
+            if (upperBound >= rawData.numInstances())
+                upperBound = rawData.numInstances() - 1;
+            Instance lowerInst = rawData.instance(lowerBound);
+            Instance currInst = rawData.instance(instIdx);
+            Instance upperInst = rawData.instance(upperBound);
+            for (int i = 0; i < axis.length; i++) {
+                if (currInst.value(i) - lowerInst.value(i) > m && currInst.value(i) - upperInst.value(i) > m) {
+                    peaks[i][instIdx] = true;
+                }
+            }
+        }
         for (int i = 0; i < axis.length; i++) {
-            windowDataPoint.setValue(transformedData.attribute("Time between peaks " + axis[i]), 0); // TBD
+            double sumTimeBetwnPeaks = 0;
+            double timeBetwnPeaks = 0;
+            double numPeaks = 0;
+            for (int j = 0; j < peaks[i].length; j++) {
+                if (peaks[i][j] == true) {
+                    if (numPeaks != 0) {
+                        sumTimeBetwnPeaks += timeBetwnPeaks;
+                    }
+                    timeBetwnPeaks = 0;
+                    numPeaks++;
+                }
+                else {
+                    timeBetwnPeaks++;
+                }
+            }
+            windowDataPoint.setValue(transformedData.attribute("Time between peaks " + axis[i]), sumTimeBetwnPeaks/numPeaks); // TBD
         }
         // Binned Distribution
         double [] binsX = new double[10];
