@@ -293,7 +293,7 @@ public class GaitClassifier {
                 }
             }
             for (int i = 0; i < 10; i++) {
-                if (currInst.value(2) <= rangesX[i]) {
+                if (currInst.value(2) <= rangesZ[i]) {
                     binsZ[i] += 1;
                     break;
                 }
