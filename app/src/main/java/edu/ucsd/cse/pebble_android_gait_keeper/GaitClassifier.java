@@ -22,10 +22,16 @@ public class GaitClassifier {
     private static final String TAG = "GaitClassifier";
     private Instances m_Data;
     private Classifier m_Classifier;
+    private String [] m_Classes;
 
-    public GaitClassifier() {
+    public GaitClassifier(String [] classes) {
+        m_Classes = classes;
         m_Data = initializeTransformedDataFormat();
         m_Classifier = new RandomForest();
+    }
+
+    public void loadGaitData(BufferedReader reader, String userid) throws Exception {
+        readData(reader, userid);
     }
 
     // Clear m_Data, and resets classifier
@@ -34,9 +40,7 @@ public class GaitClassifier {
         m_Classifier = new RandomForest();
     }
 
-    public void train(BufferedReader reader) throws Exception{
-        clearData();
-        readData(reader);
+    public void train() {
         trainClassifier(m_Data);
     }
 
@@ -81,7 +85,7 @@ public class GaitClassifier {
     }
 
     // Read from file system
-    private void readData(BufferedReader reader) throws Exception {
+    private void readData(BufferedReader reader, String userid) throws Exception {
         Instances rawData = initializeRawDataFormat();
         if (reader == null)
             return;
@@ -93,9 +97,11 @@ public class GaitClassifier {
                 continue; // skip line
             else if (mLine.contentEquals("")) {
                 // End of sample window. Extract transformed features now
-                iDataPoint = transformData(rawData, "user1");
-                m_Data.add(iDataPoint);
-                rawData.clear(); // reset to read in new window
+                if (rawData.numInstances() != 0) { // skip any blank line if we haven't read in any data yet
+                    iDataPoint = transformData(rawData, userid);
+                    m_Data.add(iDataPoint);
+                    rawData.clear(); // reset to read in new window
+                }
             } else {
                 String[] data = mLine.split("\\s+");
                 // build and add instance
@@ -137,7 +143,7 @@ public class GaitClassifier {
     private Instances initializeTransformedDataFormat() {
         int numAttributes = 44;
         String [] axis = new String[] {"x", "y", "z"};
-        String[] classes = new String[]{"user1", "user2"}; // TBD: add more depending on gathered data
+        String [] classes = m_Classes;
         // Transformed Data
         FastVector fvTransformedWekaAttributes = new FastVector(numAttributes);
         // Numeric attributes

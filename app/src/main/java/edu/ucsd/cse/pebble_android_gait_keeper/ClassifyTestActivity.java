@@ -16,7 +16,7 @@ public class ClassifyTestActivity extends Activity {
     private static final String TAG = "ClassifyTestActivity";
 
     /* The training data gathered so far. */
-    private GaitClassifier m_classifier = new GaitClassifier();
+    private GaitClassifier m_classifier = new GaitClassifier(new String[]{"scott", "justine"});
 
 
     @Override
@@ -24,26 +24,22 @@ public class ClassifyTestActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_classify_test);
 
-        BufferedReader reader = null;
+        BufferedReader reader1 = null;
+        BufferedReader reader2 = null;
         try {
-            reader = new BufferedReader(new InputStreamReader(getAssets().open("data_scott_1.log")));
-            m_classifier.train(reader);
+            reader1 = new BufferedReader(new InputStreamReader(getAssets().open("scott_accel_data_2.txt")));
+            m_classifier.loadGaitData(reader1, "scott");
+            reader1.close();
+            reader2 = new BufferedReader(new InputStreamReader(getAssets().open("justine_accel_data_1.txt")));
+            m_classifier.loadGaitData(reader2, "justine");
+            reader2.close();
         }
         catch (Exception e) {
             e.printStackTrace();
             Log.d(TAG, e.getMessage());
         }
-        finally {
-            if (reader != null) {
-                try {
-                    reader.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    Log.d(TAG, e.getMessage());
-                }
-            }
-        }
 
+        m_classifier.train();
         LinearLayout layout = (LinearLayout) findViewById(R.id.classifyTestActivityLinearLayout);
 
         TextView summary = new TextView(this);
