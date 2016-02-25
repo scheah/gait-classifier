@@ -3,6 +3,7 @@ package edu.ucsd.cse.pebble_android_gait_keeper;
 import android.util.Log;
 
 import java.io.BufferedReader;
+import java.util.Random;
 
 import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
@@ -61,17 +62,20 @@ public class GaitClassifier {
         if (m_Data.numInstances() == 0) {
             return "";
         }
+        Random rand = new Random(0);                    // create seeded number generator
+        Instances randData = new Instances(m_Data);     // create copy of original data
+        randData.randomize(rand);                       // randomize data with number generator
         try {
             RemovePercentage dataSplitter = new RemovePercentage();
             dataSplitter.setPercentage(percentSplit);
-            dataSplitter.setInputFormat(m_Data);
-            Instances trainingSet = Filter.useFilter(m_Data, dataSplitter);
+            dataSplitter.setInputFormat(randData);
+            Instances trainingSet = Filter.useFilter(randData, dataSplitter);
             // Do the opposite to get the remaining data
             dataSplitter = new RemovePercentage();
             dataSplitter.setInvertSelection(true);
             dataSplitter.setPercentage(percentSplit);
-            dataSplitter.setInputFormat(m_Data);
-            Instances testSet = Filter.useFilter(m_Data, dataSplitter);
+            dataSplitter.setInputFormat(randData);
+            Instances testSet = Filter.useFilter(randData, dataSplitter);
             summary = testClassifier(trainingSet, testSet);
 
         } catch (Exception e) {
