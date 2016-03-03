@@ -13,8 +13,6 @@ import weka.core.DenseInstance;
 import weka.core.FastVector;
 import weka.core.Instance;
 import weka.core.Instances;
-import weka.filters.Filter;
-import weka.filters.unsupervised.instance.RemovePercentage;
 
 /**
  * Created by Sebastian on 2/23/2016.
@@ -57,27 +55,16 @@ public class GaitClassifier {
         return m_Data.toSummaryString();
     }
 
-    public String internalTestSummary (double percentSplit /*Specify % of data to be TEST set*/) {
+    public String internalTestSummary(int folds) {
         String summary;
         if (m_Data.numInstances() == 0) {
-            return "";
+            return "No Data Available!";
         }
-        Random rand = new Random(0);                    // create seeded number generator
-        Instances randData = new Instances(m_Data);     // create copy of original data
-        randData.randomize(rand);                       // randomize data with number generator
         try {
-            RemovePercentage dataSplitter = new RemovePercentage();
-            dataSplitter.setPercentage(percentSplit);
-            dataSplitter.setInputFormat(randData);
-            Instances trainingSet = Filter.useFilter(randData, dataSplitter);
-            // Do the opposite to get the remaining data
-            dataSplitter = new RemovePercentage();
-            dataSplitter.setInvertSelection(true);
-            dataSplitter.setPercentage(percentSplit);
-            dataSplitter.setInputFormat(randData);
-            Instances testSet = Filter.useFilter(randData, dataSplitter);
-            summary = testClassifier(trainingSet, testSet);
-
+            Evaluation eval = new Evaluation(m_Data);
+            Random rand = new Random(1);  // using seed = 1
+            eval.crossValidateModel(m_Classifier, m_Data, folds, rand);
+            summary = eval.toSummaryString() + "\n" + eval.toClassDetailsString() + "\n" + eval.toMatrixString();
         } catch (Exception e) {
             e.printStackTrace();
             Log.d("TAG", e.getMessage());
@@ -115,6 +102,10 @@ public class GaitClassifier {
                 iDataPoint.setValue(rawData.attribute("z"), Double.parseDouble(data[2]));
                 rawData.add(iDataPoint);
             }
+        }
+        if (rawData.numInstances() != 0) { // handle potential window near end of file
+            Instance iDataPoint = transformData(rawData, userid);
+            m_Data.add(iDataPoint);
         }
     }
 
