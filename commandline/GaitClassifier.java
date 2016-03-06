@@ -80,7 +80,7 @@ public class GaitClassifier {
         while ((mLine = reader.readLine()) != null) {
             //process line
             Instance iDataPoint = null;
-            if (mLine.contains(":"))
+            if (mLine.contains(":") || mLine.contains("="))
                 continue; // skip line
             else if (mLine.contentEquals("")) {
                 // End of sample window. Extract transformed features now
