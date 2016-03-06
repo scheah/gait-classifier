@@ -9,6 +9,7 @@ import weka.core.DenseInstance;
 import weka.core.FastVector;
 import weka.core.Instance;
 import weka.core.Instances;
+import weka.core.Utils;
 
 /**
  * Created by Sebastian on 2/23/2016.
@@ -21,7 +22,7 @@ public class GaitClassifier {
 
     public GaitClassifier(String [] classes) {
         m_Classes = classes;
-        m_Data = initializeTransformedDataFormat();
+        m_Data = initializeTransformedDataFormat2();
         m_Classifier = new RandomForest();
     }
 
@@ -84,7 +85,7 @@ public class GaitClassifier {
             else if (mLine.contentEquals("")) {
                 // End of sample window. Extract transformed features now
                 if (rawData.numInstances() != 0) { // skip any blank line if we haven't read in any data yet
-                    iDataPoint = transformData(rawData, userid);
+                    iDataPoint = transformData2(rawData, userid);
                     m_Data.add(iDataPoint);
                     rawData.clear(); // reset to read in new window
                 }
@@ -99,7 +100,7 @@ public class GaitClassifier {
             }
         }
         if (rawData.numInstances() != 0) { // handle potential window near end of file
-            Instance iDataPoint = transformData(rawData, userid);
+            Instance iDataPoint = transformData2(rawData, userid);
             m_Data.add(iDataPoint);
         }
     }
@@ -175,6 +176,57 @@ public class GaitClassifier {
         return transformedData;
     }
 
+    private Instances initializeTransformedDataFormat2() {
+        int numAttributes = 19;
+        String [] axis = new String[] {"x", "y", "z"};
+        String [] classes = m_Classes;
+        // Transformed Data
+        FastVector fvTransformedWekaAttributes = new FastVector(numAttributes);
+        // Numeric attributes
+        // Mean
+        for (int i = 0; i < axis.length; i++) {
+            Attribute attribute = new Attribute("Mean " + axis[i]);
+            fvTransformedWekaAttributes.addElement(attribute);
+        }
+        // Variance
+        for (int i = 0; i < axis.length; i++) {
+            Attribute attribute = new Attribute("Variance " + axis[i]);
+            fvTransformedWekaAttributes.addElement(attribute);
+        }
+        // Standard Deviation
+        for (int i = 0; i < axis.length; i++) {
+            Attribute attribute = new Attribute("Standard Deviation " + axis[i]);
+            fvTransformedWekaAttributes.addElement(attribute);
+        }
+        // Minimum
+        for (int i = 0; i < axis.length; i++) {
+            Attribute attribute = new Attribute("Minimum " + axis[i]);
+            fvTransformedWekaAttributes.addElement(attribute);
+        }
+        // Average Absolute Sample Difference
+        for (int i = 0; i < axis.length; i++) {
+            Attribute attribute = new Attribute("Average Absolute Sample Difference " + axis[i]);
+            fvTransformedWekaAttributes.addElement(attribute);
+        }
+        // Correlation
+        for (int i = 0; i < axis.length-1; i++) {
+            for (int j = i + 1; j < axis.length; j++) {
+                Attribute attribute = new Attribute("Correlation " + axis[i] + axis[j]);
+                fvTransformedWekaAttributes.addElement(attribute);
+            }
+        }
+        // Declare class attribute
+        FastVector fvUserVal = new FastVector(classes.length);
+        for (int i = 0; i < classes.length; i++) {
+            fvUserVal.addElement(classes[i]);
+        }
+        Attribute classAttribute = new Attribute("userid", fvUserVal);
+        fvTransformedWekaAttributes.addElement(classAttribute);
+        Instances transformedData = new Instances("FeaturesV2" /*relation name*/, fvTransformedWekaAttributes /*attribute vector*/, 25 /*initial capacity*/);
+        transformedData.setClassIndex(transformedData.numAttributes() - 1);
+        return transformedData;
+    }
+
     private Instances initializeRawDataFormat() {
         // Raw Data Points to extract features from
         Attribute attribute1 = new Attribute("x");
@@ -186,7 +238,7 @@ public class GaitClassifier {
         fvWekaAttributes.addElement(attribute2);
         fvWekaAttributes.addElement(attribute3);
         // Create an empty raw data set
-        Instances rawData = new Instances("raw_gait" /*relation name*/, fvWekaAttributes /*attribute vector*/, 250 /*initial capacity*/);
+        Instances rawData = new Instances("raw_accel" /*relation name*/, fvWekaAttributes /*attribute vector*/, 250 /*initial capacity*/);
         return rawData;
     }
 
@@ -331,5 +383,44 @@ public class GaitClassifier {
         return windowDataPoint;
     }
 
+    private Instance transformData2(Instances rawData, String userid) {
+        String [] axis = new String[] {"x", "y", "z"};
+        Instance windowDataPoint = new DenseInstance(19);
+        // Mean, Variance, Standard Deviation, Minimum
+        for (int i = 0; i < axis.length; i++) {
+            double mean = rawData.meanOrMode(i);
+            double var = rawData.variance(i);
+            double sd = Math.sqrt(var);
+            double minimum = rawData.attributeStats(i).numericStats.min;
+            windowDataPoint.setValue(m_Data.attribute("Mean " + axis[i]), mean);
+            windowDataPoint.setValue(m_Data.attribute("Variance " + axis[i]), var);
+            windowDataPoint.setValue(m_Data.attribute("Standard Deviation " + axis[i]), sd);
+            windowDataPoint.setValue(m_Data.attribute("Minimum " + axis[i]), minimum);
+        }
+        // Average Absolute Sample Difference
+        double [] sumDeltas = new double[] {0,0,0};
+        Instance prevInst = rawData.instance(0);
+        for (int instIdx = 1; instIdx < rawData.numInstances(); instIdx++) {
+            Instance currInst = rawData.instance(instIdx);
+            for (int i = 0; i < axis.length; i++) {
+                sumDeltas[i] += currInst.value(rawData.attribute(axis[i])) - prevInst.value(rawData.attribute(axis[i]));
+            }
+            prevInst = currInst;
+        }
+        for (int i = 0; i < axis.length; i++) {
+            windowDataPoint.setValue(m_Data.attribute("Average Absolute Sample Difference " + axis[i]), sumDeltas[i]/rawData.numInstances());
+        }
+        for (int i = 0; i < axis.length-1; i++) {
+            for (int j = i + 1; j < axis.length; j++) {
+                double [] arrI = rawData.attributeToDoubleArray(i);
+                double [] arrJ = rawData.attributeToDoubleArray(j);
+                windowDataPoint.setValue(m_Data.attribute("Correlation " + axis[i] + axis[j]), Utils.correlation(arrI, arrJ, arrI.length));
+            }
+        }
+        // Class attribute
+        windowDataPoint.setValue(m_Data.attribute("userid"), userid);
+
+        return windowDataPoint;
+    }
 
 }
