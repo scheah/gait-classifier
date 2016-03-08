@@ -1,2 +1,2 @@
 javac -cp ".;libs/*" *.java
-java main
+java -cp ".;libs/*" main
