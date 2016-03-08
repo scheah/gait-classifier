@@ -1,3 +1,2 @@
-javac -cp ".;libs\*" GaitClassifier.java
-javac main.java
-java -cp ".;libs\*" main
+javac -cp ".;libs/*" *.java
+java main
