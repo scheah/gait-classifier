@@ -1,5 +1,6 @@
 import java.io.BufferedReader;
 import java.util.Random;
+import java.io.File;
 
 import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
@@ -10,6 +11,7 @@ import weka.core.FastVector;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.Utils;
+import weka.core.converters.ArffSaver;
 
 /**
  * Created by Sebastian on 2/23/2016.
@@ -19,11 +21,23 @@ public class GaitClassifier {
     private Instances m_Data;
     private Classifier m_Classifier;
     private String [] m_Classes;
+    private int m_FeatureOption; //hack
 
-    public GaitClassifier(String [] classes) {
+    public GaitClassifier(String [] classes, int featureOption) {
+        // CHOOSE 2 AS THE FEATUREOPTION!!! IT'S THE BEST
+        m_FeatureOption = featureOption;
         m_Classes = classes;
-        m_Data = initializeTransformedDataFormat2();
         m_Classifier = new RandomForest();
+        switch(featureOption) {
+            case 1:
+                m_Data = initializeTransformedDataFormat();
+                break;
+            case 2:
+                m_Data = initializeTransformedDataFormat2();
+                break;
+            default:
+                System.out.println("Catastrophic failure, featureOption doesnt exist");
+        }
     }
 
     public void loadGaitData(BufferedReader reader, String userid) throws Exception {
@@ -47,6 +61,18 @@ public class GaitClassifier {
     public String dataDump() {
         return m_Data.toString();
     }
+
+    // public void saveArff(String filename) throws Exception {
+    //     Instances dataSet = m_Data;
+    //     ArffSaver saver = new ArffSaver();
+    //     saver.setInstances(dataSet);
+    //     saver.setFile(new File("./arff/" + filename + ".arff"));
+    //     // saver.setDestination(new File("./arff/" + filename + ".arff"));   // **not** necessary in 3.5.4 and later
+    //     saver.writeBatch();
+    // }
+    //
+    // public void loadArff(String filename) {
+    // }
 
     public String dataSummary() {
         return m_Data.toSummaryString();
@@ -85,7 +111,16 @@ public class GaitClassifier {
             else if (mLine.contentEquals("")) {
                 // End of sample window. Extract transformed features now
                 if (rawData.numInstances() != 0) { // skip any blank line if we haven't read in any data yet
-                    iDataPoint = transformData2(rawData, userid);
+                    switch(m_FeatureOption) {
+                        case 1:
+                            iDataPoint = transformData(rawData, userid);
+                            break;
+                        case 2:
+                            iDataPoint = transformData2(rawData, userid);
+                            break;
+                        default:
+                            System.out.println("Catastrophic failure, invalid feature option");
+                    }
                     m_Data.add(iDataPoint);
                     rawData.clear(); // reset to read in new window
                 }
@@ -100,7 +135,17 @@ public class GaitClassifier {
             }
         }
         if (rawData.numInstances() != 0) { // handle potential window near end of file
-            Instance iDataPoint = transformData2(rawData, userid);
+            Instance iDataPoint = null;
+            switch(m_FeatureOption) {
+                case 1:
+                    iDataPoint = transformData(rawData, userid);
+                    break;
+                case 2:
+                    iDataPoint = transformData2(rawData, userid);
+                    break;
+                default:
+                    System.out.println("Catastrophic failure, invalid feature option");
+            }
             m_Data.add(iDataPoint);
         }
     }

@@ -13,9 +13,11 @@ public class main {
             BufferedReader reader = null;
             File [] listOfFiles = folder.listFiles();
             for (int i = 0; i < listOfFiles.length; i++) {
-                reader = new BufferedReader(new FileReader(listOfFiles[i]));
-                classifier.loadGaitData(reader, className);
-                reader.close();
+                if (listOfFiles[i].toString().contains("Gyro") || listOfFiles[i].toString().contains("Accelerometer")) {
+                    reader = new BufferedReader(new FileReader(listOfFiles[i]));
+                    classifier.loadGaitData(reader, className);
+                    reader.close();
+                }
             }
         }
         catch (Exception e) {
@@ -23,8 +25,8 @@ public class main {
             System.out.println(e.getMessage());
         }
     }
-	
-    public static void processHMPData(int classOption) {
+
+    public static void processHMPData(int classOption, int featureOption) {
         String [] actionClasses = new String[]{"brush_teeth", "climb_stairs", "comb_hair",
             "descend_stairs", "drink_glass", "eat_meat", "eat_soup", "getup_bed", "liedown_bed", "pour_water", "sitdown_chair",
             "standup_chair", "use_telephone", "walk"};
@@ -32,7 +34,7 @@ public class main {
             "m10", "m11"};
         GaitClassifier m_classifier = null;
         if (classOption == 1) {
-            m_classifier = new GaitClassifier(actionClasses);
+            m_classifier = new GaitClassifier(actionClasses, featureOption);
             addFilesFromDir(m_classifier, "dataset/HMP_Dataset/by_action/Brush_teeth", "brush_teeth");
             addFilesFromDir(m_classifier, "dataset/HMP_Dataset/by_action/Climb_stairs", "climb_stairs");
             addFilesFromDir(m_classifier, "dataset/HMP_Dataset/by_action/Comb_hair", "comb_hair");
@@ -49,7 +51,7 @@ public class main {
             addFilesFromDir(m_classifier, "dataset/HMP_Dataset/by_action/Walk", "walk");
         }
         else if (classOption == 2) {
-            m_classifier = new GaitClassifier(userClasses);
+            m_classifier = new GaitClassifier(userClasses, featureOption);
             addFilesFromDir(m_classifier, "dataset/HMP_Dataset/by_user/f1", "f1");
             addFilesFromDir(m_classifier, "dataset/HMP_Dataset/by_user/f2", "f2");
             addFilesFromDir(m_classifier, "dataset/HMP_Dataset/by_user/f3", "f3");
@@ -75,14 +77,20 @@ public class main {
         System.out.println(m_classifier.dataSummary());
         System.out.println(m_classifier.internalTestSummary(5));
         // System.out.println(m_classifier.dataDump());
+        // try {
+        //     m_classifier.saveArff("HMP_Dataset");
+        // }
+        // catch (Exception e) {
+        //     e.printStackTrace();
+        // }
     }
 
-	public static void processLGWatchUrbaneData(int classOption) {
+	public static void processLGWatchUrbaneData(int classOption, int featureOption) {
         String [] actionClasses = new String[]{"cup", "door", "typing", "walking", "watch"};
         String [] userClasses = new String[]{"andrew", "derek", "scott", "sebastian"};
         GaitClassifier m_classifier = null;
         if (classOption == 1) {
-            m_classifier = new GaitClassifier(actionClasses);
+            m_classifier = new GaitClassifier(actionClasses, featureOption);
             addFilesFromDir(m_classifier, "dataset/LG_Watch_Urbane/by_action/Cup", "cup");
             addFilesFromDir(m_classifier, "dataset/LG_Watch_Urbane/by_action/Door", "door");
             addFilesFromDir(m_classifier, "dataset/LG_Watch_Urbane/by_action/Typing", "typing");
@@ -90,7 +98,7 @@ public class main {
             addFilesFromDir(m_classifier, "dataset/LG_Watch_Urbane/by_action/Watch", "watch");
         }
         else if (classOption == 2) {
-            m_classifier = new GaitClassifier(userClasses);
+            m_classifier = new GaitClassifier(userClasses, featureOption);
             addFilesFromDir(m_classifier, "dataset/LG_Watch_Urbane/by_user/Andrew", "andrew");
             addFilesFromDir(m_classifier, "dataset/LG_Watch_Urbane/by_user/Derek", "derek");
             addFilesFromDir(m_classifier, "dataset/LG_Watch_Urbane/by_user/Scott", "scott");
@@ -104,15 +112,21 @@ public class main {
         System.out.println(m_classifier.dataSummary());
         System.out.println(m_classifier.internalTestSummary(5));
         // System.out.println(m_classifier.dataDump());
+        // try {
+        //     m_classifier.saveArff("LG_Watch_Urbane");
+        // }
+        // catch (Exception e) {
+        //     e.printStackTrace();
+        // }
 	}
 
-    public static void processDataset(int dataOption, int classOption) {
+    public static void processDataset(int dataOption, int classOption, int featureOption) {
         switch(dataOption) {
-            case 1: 
-                processHMPData(classOption);
+            case 1:
+                processHMPData(classOption, featureOption);
                 break;
             case 2:
-                processLGWatchUrbaneData(classOption);
+                processLGWatchUrbaneData(classOption, featureOption);
                 break;
             default:
                 System.out.println("Invalid dataset choice");
@@ -123,10 +137,13 @@ public class main {
         Scanner reader = new Scanner(System.in);
         System.out.println("Specify which data you would like to process: ");
         System.out.println("\t1: HMP_Dataset\n\t2: LG_Watch_Urbane");
-        int dataOption = reader.nextInt(); 
+        int dataOption = reader.nextInt();
         System.out.println("Classify by action or user?: ");
         System.out.println("\t1: Action\n\t2: User");
-        int classOption = reader.nextInt(); 
-        processDataset(dataOption, classOption);
+        int classOption = reader.nextInt();
+        System.out.println("Extract features using: ");
+        System.out.println("\t1: Gait\n\t2: General time domain");
+        int featureOption = reader.nextInt();
+        processDataset(dataOption, classOption, featureOption);
     }
 }
