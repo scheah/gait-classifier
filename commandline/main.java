@@ -68,7 +68,7 @@ public class Main {
 				break;
 			case USER_CLASS:
 				classificationDir = "by_user/";
-				classes = new String[] { "andrew", "chris", "derrick", "scott", "sebastian" };
+				classes = new String[] { "andrew", "chris", "derrick", "scott", "sebastian", "matt", "justine", "jennifer", "jackie", "sabrina" };
 				break;
 			}
 			break;

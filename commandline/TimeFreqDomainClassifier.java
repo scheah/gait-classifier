@@ -17,7 +17,7 @@ public class TimeFreqDomainClassifier extends DataClassifier {
 	}
 
 	protected Instances initializeTransformedDataFormat() {
-		int numAttributes = 22;
+		int numAttributes = 28;
 		String[] axis = new String[] { "x", "y", "z" };
 		String[] classes = m_Classes;
 
@@ -72,6 +72,18 @@ public class TimeFreqDomainClassifier extends DataClassifier {
 			fvTransformedWekaAttributes.addElement(attribute);
 		}
 
+		// Fourier Coefficients
+		for (int i = 0; i < axis.length; i++) {
+			Attribute attribute = new Attribute("Fourier Coeff " + axis[i]);
+			fvTransformedWekaAttributes.addElement(attribute);
+		}
+
+		// Sepctral Entropy
+		for (int i = 0; i < axis.length; i++) {
+			Attribute attribute = new Attribute("Spectral Entropy " + axis[i]);
+			fvTransformedWekaAttributes.addElement(attribute);
+		}
+
 		// Declare class attribute
 		FastVector fvUserVal = new FastVector(classes.length);
 		for (int i = 0; i < classes.length; i++) {
@@ -86,9 +98,9 @@ public class TimeFreqDomainClassifier extends DataClassifier {
 		return transformedData;
 	}
 
-	protected Instance transformData(Instances rawData, Instances rawSpectralEnergyData, String userid) {
+	protected Instance transformData(Instances rawData, Instances rawSpectralData, String userid) {
 		String[] axis = new String[] { "x", "y", "z" };
-		Instance windowDataPoint = new DenseInstance(22);
+		Instance windowDataPoint = new DenseInstance(28);
 
 		// Mean, Variance, Standard Deviation, Minimum
 		for (int i = 0; i < axis.length; i++) {
@@ -125,8 +137,16 @@ public class TimeFreqDomainClassifier extends DataClassifier {
 			}
 		}
 		for (int i = 0; i < axis.length; i++) {
-			double value = rawSpectralEnergyData.meanOrMode(i);
+			double value = rawSpectralData.meanOrMode(i);
 			windowDataPoint.setValue(m_Data.attribute("Spectral Energy " + axis[i]), value);
+		}
+		for (int i = 0; i < axis.length; i++) {
+			double value = rawSpectralData.meanOrMode(i+3);
+			windowDataPoint.setValue(m_Data.attribute("Fourier Coeff " + axis[i]), value);
+		}
+		for (int i = 0; i < axis.length; i++) {
+			double value = rawSpectralData.meanOrMode(i+6);
+			windowDataPoint.setValue(m_Data.attribute("Spectral Entropy " + axis[i]), value);
 		}
 		// Class attribute
 		windowDataPoint.setValue(m_Data.attribute("userid"), userid);
@@ -140,11 +160,23 @@ public class TimeFreqDomainClassifier extends DataClassifier {
 		Attribute attribute1 = new Attribute("spectral_energy_x");
 		Attribute attribute2 = new Attribute("spectral_energy_y");
 		Attribute attribute3 = new Attribute("spectral_energy_z");
-		FastVector fvWekaAttributes = new FastVector(3);
+		Attribute attribute4 = new Attribute("fourier_coeff_x");
+		Attribute attribute5 = new Attribute("fourier_coeff_y");
+		Attribute attribute6 = new Attribute("fourier_coeff_z");
+		Attribute attribute7 = new Attribute("spectral_entropy_x");
+		Attribute attribute8 = new Attribute("spectral_entropy_y");
+		Attribute attribute9 = new Attribute("spectral_entropy_z");
+		FastVector fvWekaAttributes = new FastVector(9);
 		fvWekaAttributes.addElement(attribute1);
 		fvWekaAttributes.addElement(attribute2);
 		fvWekaAttributes.addElement(attribute3);
-		Instances rawSpectralEnergyData = new Instances("raw_spectral_energy", fvWekaAttributes, 250);
+		fvWekaAttributes.addElement(attribute4);
+		fvWekaAttributes.addElement(attribute5);
+		fvWekaAttributes.addElement(attribute6);
+		fvWekaAttributes.addElement(attribute7);
+		fvWekaAttributes.addElement(attribute8);
+		fvWekaAttributes.addElement(attribute9);
+		Instances rawSpectralData = new Instances("raw_spectral", fvWekaAttributes, 250);
 
 		if (file == null)
 			return;
@@ -165,23 +197,29 @@ public class TimeFreqDomainClassifier extends DataClassifier {
 
 		Path path = file.toPath();
 		String filename = "spectral_energy_" + path.getFileName().toString();
-		File spectralEnergyFile = new File(path.getParent().toString() + "/" + filename);
+		File spectralFile = new File(path.getParent().toString() + "/" + filename);
 
-		reader = new BufferedReader(new FileReader(spectralEnergyFile));
+		reader = new BufferedReader(new FileReader(spectralFile));
 		while ((mLine = reader.readLine()) != null) {
 			if (mLine.contains(":") || mLine.contains("="))
 				continue;
 			String[] data = mLine.split("\\s+");
-			Instance iDataPoint = new DenseInstance(3);
-			iDataPoint.setValue(rawSpectralEnergyData.attribute("spectral_energy_x"), Double.parseDouble(data[0]));
-			iDataPoint.setValue(rawSpectralEnergyData.attribute("spectral_energy_y"), Double.parseDouble(data[1]));
-			iDataPoint.setValue(rawSpectralEnergyData.attribute("spectral_energy_z"), Double.parseDouble(data[2]));
-			rawSpectralEnergyData.add(iDataPoint);
+			Instance iDataPoint = new DenseInstance(9);
+			iDataPoint.setValue(rawSpectralData.attribute("spectral_energy_x"), Double.parseDouble(data[0]));
+			iDataPoint.setValue(rawSpectralData.attribute("spectral_energy_y"), Double.parseDouble(data[1]));
+			iDataPoint.setValue(rawSpectralData.attribute("spectral_energy_z"), Double.parseDouble(data[2]));
+			iDataPoint.setValue(rawSpectralData.attribute("fourier_coeff_x"), Double.parseDouble(data[3]));
+			iDataPoint.setValue(rawSpectralData.attribute("fourier_coeff_y"), Double.parseDouble(data[4]));
+			iDataPoint.setValue(rawSpectralData.attribute("fourier_coeff_z"), Double.parseDouble(data[5]));
+			iDataPoint.setValue(rawSpectralData.attribute("spectral_entropy_x"), Double.parseDouble(data[6]));
+			iDataPoint.setValue(rawSpectralData.attribute("spectral_entropy_y"), Double.parseDouble(data[7]));
+			iDataPoint.setValue(rawSpectralData.attribute("spectral_entropy_z"), Double.parseDouble(data[8]));
+			rawSpectralData.add(iDataPoint);
 		}
 		reader.close();
 
 		if (rawData.numInstances() != 0) {
-			Instance iDataPoint = transformData(rawData, rawSpectralEnergyData, userid);
+			Instance iDataPoint = transformData(rawData, rawSpectralData, userid);
 			m_Data.add(iDataPoint);
 		}
 
