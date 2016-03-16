@@ -4,7 +4,7 @@ import java.io.FileReader;
 import java.nio.file.Path;
 import java.util.Scanner;
 
-public class Main {
+public class main {
 
 	private static final int HMP_DATASET = 1;
 	private static final int LG_DATASET = 2;
