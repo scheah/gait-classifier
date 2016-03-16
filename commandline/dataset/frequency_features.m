@@ -18,7 +18,7 @@ function frequency_features()
         },
         {
             {'cup', 'door', 'typing', 'walking', 'watch'},
-            {'andrew', 'chris', 'derrick', 'scott', 'sebastian'}
+            {'andrew', 'chris', 'derrick', 'scott', 'sebastian', 'matt', 'justine', 'jackie', 'jennifer', 'sabrina'}
         }
     };
 
