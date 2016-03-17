@@ -6,6 +6,7 @@ import java.util.Random;
 import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
 import weka.classifiers.trees.RandomForest;
+import weka.classifiers.lazy.IBk;
 import weka.core.Attribute;
 import weka.core.DenseInstance;
 import weka.core.FastVector;
@@ -18,14 +19,23 @@ import weka.core.Instances;
 public class DataClassifier {
 
 	protected static final String TAG = "DataClassifier";
+	private static final int RANDOM_FOREST = 1;
+	private static final int NEAREST_NEIGHBOR = 2;
 
 	protected Instances m_Data;
 	protected Classifier m_Classifier;
 	protected String[] m_Classes;
 
-	public DataClassifier(String[] classes) {
+	public DataClassifier(String[] classes, int classifierOption) {
 		m_Classes = classes;
-		m_Classifier = new RandomForest();
+		switch(classifierOption) {
+			case RANDOM_FOREST:
+				m_Classifier = new RandomForest();
+				break;
+			case NEAREST_NEIGHBOR:
+				m_Classifier = new IBk();
+				break;
+		}
 		m_Data = initializeTransformedDataFormat();
 	}
 

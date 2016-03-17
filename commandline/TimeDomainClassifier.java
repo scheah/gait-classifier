@@ -7,8 +7,8 @@ import weka.core.Utils;
 
 public class TimeDomainClassifier extends DataClassifier {
 
-	public TimeDomainClassifier(String[] classes) {
-		super(classes);
+	public TimeDomainClassifier(String[] classes, int classifierOption) {
+		super(classes, classifierOption);
 	}
 
 	protected Instances initializeTransformedDataFormat() {
