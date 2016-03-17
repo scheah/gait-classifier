@@ -4,7 +4,7 @@ import java.io.FileReader;
 import java.nio.file.Path;
 import java.util.Scanner;
 
-public class Main {
+public class main {
 
 	private static final int HMP_DATASET = 1;
 	private static final int LG_DATASET = 2;
@@ -15,6 +15,9 @@ public class Main {
 	private static final int GAIT_CLASSIFIER = 1;
 	private static final int TIME_DOMAIN_CLASSIFIER = 2;
 	private static final int TIME_FREQ_DOMAIN_CLASSIFIER = 3;
+
+	private static final int RANDOM_FOREST = 1;
+	private static final int NEAREST_NEIGHBOR = 2;
 
 	public static void main(String[] args) {
 		Scanner reader = new Scanner(System.in);
@@ -31,12 +34,16 @@ public class Main {
 		System.out.println("\t1: Gait\n\t2: General time domain\n\t3: Time and freq domain");
 		int featureOption = reader.nextInt();
 
+		System.out.println("Use classifier: ");
+		System.out.println("\t1: Random Forest\n\t2: Nearest Neighbor");
+		int classifierOption = reader.nextInt();
+
 		reader.close();
 
-		processDataset(dataOption, classOption, featureOption);
+		processDataset(dataOption, classOption, featureOption, classifierOption);
 	}
 
-	private static void processDataset(int dataOption, int classOption, int featureOption) {
+	private static void processDataset(int dataOption, int classOption, int featureOption, int classifierOption) {
 		DataClassifier classifier = null;
 		String datasetDir = null;
 		String classificationDir = null;
@@ -75,11 +82,11 @@ public class Main {
 		}
 
 		if (featureOption == GAIT_CLASSIFIER) {
-			classifier = new GaitClassifier(classes);
+			classifier = new GaitClassifier(classes, classifierOption);
 		} else if (featureOption == TIME_DOMAIN_CLASSIFIER) {
-			classifier = new TimeDomainClassifier(classes);
+			classifier = new TimeDomainClassifier(classes, classifierOption);
 		} else if (featureOption == TIME_FREQ_DOMAIN_CLASSIFIER) {
-			classifier = new TimeFreqDomainClassifier(classes);
+			classifier = new TimeFreqDomainClassifier(classes, classifierOption);
 		}
 
 		for (String s : classes) {

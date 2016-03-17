@@ -6,8 +6,8 @@ import weka.core.Instances;
 
 public class GaitClassifier extends DataClassifier {
 
-	public GaitClassifier(String[] classes) {
-		super(classes);
+	public GaitClassifier(String[] classes, int classifierOption) {
+		super(classes, classifierOption);
 	}
 
 	protected Instances initializeTransformedDataFormat() {

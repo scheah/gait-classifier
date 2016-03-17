@@ -12,8 +12,8 @@ import weka.core.Utils;
 
 public class TimeFreqDomainClassifier extends DataClassifier {
 
-	public TimeFreqDomainClassifier(String[] classes) {
-		super(classes);
+	public TimeFreqDomainClassifier(String[] classes, int classifierOption) {
+		super(classes, classifierOption);
 	}
 
 	protected Instances initializeTransformedDataFormat() {
